@@ -12,7 +12,7 @@ import play.api.libs.json._
   */
 class TextParserResourceHandler @Inject()(
     routerProvider: Provider[TextParserRouter],
-    textRepository: TextParserRepositoryImpl)(implicit ec: ExecutionContext) {
+    textRepository: TextParserRepository)(implicit ec: ExecutionContext) {
 
   def getNouns(text: String)(
       implicit mc: MarkerContext): Future[JsValue] = {
