@@ -13,11 +13,17 @@ class TextParserRouter @Inject()(controller: TextParserController) extends Simpl
 
   override def routes: Routes = {
 
+	/*case GET(p"/") =>
+      controller.index()*/
+
 	case GET(p"/nouns/$text") =>
       controller.getNouns(text)
 	  
     case GET(p"/verbs/$text") =>
-      controller.getVerbs(text)
+      controller.getVerbs(text)	  
+	  
+    case GET(p"/nameandlocation/$text") =>
+      controller.getNameAndLocation(text)
 	  
 	case GET(p"/unique/nouns/$text") =>
       controller.getUniqueNouns(text)

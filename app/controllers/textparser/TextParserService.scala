@@ -18,9 +18,13 @@ import opennlp.tools.postag.POSSample;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.tokenize.TokenizerME; 
 import opennlp.tools.tokenize.TokenizerModel;
+import opennlp.tools.namefind.NameFinderME; 
+import opennlp.tools.namefind.TokenNameFinderModel;
+import opennlp.tools.util.Span;
 
 case class NounsData(nouns: List[String])
 case class VerbsData(verbs: List[String])
+case class NameAndLocation(persons: List[String], Locations: List[String])
 case class TokenCountData(total: Int, nouns: Int, verbs: Int, stopWords: Int, specialCharacters: Int)
 case class ExtractAllData(nouns: List[String], verbs: List[String], stopWords: Set[String])
 case class ExtractUniqueData(nouns: List[String], verbs: List[String], stopWords: Set[String],specialCharacters: List[String])
@@ -38,6 +42,13 @@ object VerbsData {
     * Mapping to read/write a VerbsData out as a JSON value.
     */
     implicit val format: Format[VerbsData] = Json.format
+}
+
+object NameAndLocation {
+  /**
+    * Mapping to read/write a NameAndLocation out as a JSON value.
+    */
+    implicit val format: Format[NameAndLocation] = Json.format
 }
 
 object TokenCountData {
@@ -77,6 +88,7 @@ class TextParserExecutionContext @Inject()(actorSystem: ActorSystem)
 trait TextParserService {
   def getNouns(text: String, IsUnique: Boolean = false)(implicit mc: MarkerContext): Future[NounsData]
   def getVerbs(text: String, IsUnique: Boolean = false)(implicit mc: MarkerContext): Future[VerbsData]
+  def getNameAndLocation(text: String)(implicit mc: MarkerContext): Future[NameAndLocation]
   def analyze(text: String)(implicit mc: MarkerContext): Future[OverAllData]
 }
 
@@ -94,21 +106,40 @@ class TextParserServiceImpl @Inject()()(implicit ec: TextParserExecutionContext)
   private val logger = Logger(this.getClass)
   private var tokenizer : TokenizerME = _
   private var posTagger : POSTaggerME = _
+  private var personFinder : NameFinderME = _
+  private var locationFinder : NameFinderME = _
   var STOPWORDS : Set[String] = _
   
   def initializeModel() = {
 	logger.trace("initializing Model")
+	
 	// Get Root path
 	val currentDirectory = new java.io.File(".").getCanonicalPath
+	
 	// Tokenize the given text
 	val tokenModel = new TokenizerModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-token.bin"))
 	tokenizer = new TokenizerME(tokenModel)
+	
 	// Parts-Of-Speech Tagging 
 	// loading the parts-of-speech model from stream 
-	val posModel = new POSModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-pos-maxent.bin")) 
+	val posModel = new POSModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-pos-maxent.bin"))
+	
 	// initializing the parts-of-speech tagger with model 
 	posTagger = new POSTaggerME(posModel)
+	
 	STOPWORDS = scala.io.Source.fromFile(currentDirectory + "\\conf\\resource\\stopwords.txt").getLines.flatMap(_.split("\\W+")).toSet
+	
+	//Loading the NER-person model    
+	val personModel = new TokenNameFinderModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-ner-person.bin"))
+	
+	//Instantiating the Person NameFinderME class 
+	personFinder = new NameFinderME(personModel);
+	
+	//Loading the NER-location moodel     
+    val locationModel = new TokenNameFinderModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-ner-location.bin")); 
+        
+    //Instantiating the Location NameFinderME class 
+    locationFinder = new NameFinderME(locationModel);  
 
   }
   initializeModel()
@@ -142,6 +173,28 @@ class TextParserServiceImpl @Inject()()(implicit ec: TextParserExecutionContext)
 		  logger.trace("Service - GetVerbs With Unique")
 		  VerbsData(extractFeatures(text, false).map(_.toLowerCase()).distinct)
 	  }
+    }
+  }
+
+  override def getNameAndLocation(text: String)(
+      implicit mc: MarkerContext): Future[NameAndLocation] = {
+    Future {
+		logger.trace("Service - Get Name & Location")
+		
+		// Tokenize the given text
+        val tokens = tokenizer.tokenize(text)
+	  
+		//Finding the names in the sentence 
+		val nameSpans: Array[Span] = personFinder.find(tokens)
+		
+		//Finding the locations in the sentence
+		val locationSpans: Array[Span] = locationFinder.find(tokens)
+		
+		val persons = Span.spansToStrings(nameSpans, tokens)
+		
+		val locations = Span.spansToStrings(locationSpans, tokens)
+		
+		NameAndLocation(persons.toList.distinct, locations.toList.distinct)
     }
   }
  

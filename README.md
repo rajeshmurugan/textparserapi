@@ -20,7 +20,7 @@ Play will start up on the HTTP port at <http://localhost:9000/>.   You don't nee
 If you call the same URL from the command line, you’ll see JSON. Using [httpie](https://httpie.org/), we can execute the command:
 
 ```bash
-http --verbose http://localhost:9000/textparser/api/nouns
+http --verbose http://localhost:9000/textparser/api/nouns/<text>
 ```
 
 and get back:
@@ -30,7 +30,7 @@ GET /textparser/api/nouns HTTP/1.1
 ```
 
 ```bash
-http --verbose http://localhost:9000/textparser/api/verbs
+http --verbose http://localhost:9000/textparser/api/verbs/<text>
 ```
 
 and get back:
@@ -40,7 +40,7 @@ GET /textparser/api/verbs HTTP/1.1
 ```
 
 ```bash
-http --verbose http://localhost:9000/textparser/unique/nouns
+http --verbose http://localhost:9000/textparser/unique/nouns/<text>
 ```
 
 and get back:
@@ -50,7 +50,7 @@ GET /textparser/api/unique/nouns  HTTP/1.1
 ```
 
 ```bash
-http --verbose http://localhost:9000/textparser/unique/verbs
+http --verbose http://localhost:9000/textparser/unique/verbs/<text>
 ```
 
 and get back:
@@ -60,10 +60,19 @@ GET /textparser/api/unique/verbs  HTTP/1.1
 ```
 
 ```bash
-http --verbose http://localhost:9000/textparser/api/analyze
+http --verbose http://localhost:9000/textparser/api/analyze/<text>
 ```
 
 and get back:
 ```routes
 GET /textparser/api/analyze  HTTP/1.1
+```
+
+```bash
+http --verbose http://localhost:9000/textparser/api/nameandlocation/<text>
+```
+
+and get back:
+```routes
+GET /textparser/api/nameandlocation  HTTP/1.1
 ```

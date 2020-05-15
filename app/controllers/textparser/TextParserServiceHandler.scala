@@ -29,6 +29,15 @@ class TextParserServiceHandler @Inject()(
         Json.toJson(textparserData)
       }
   }
+
+  def getNameAndLocation(text: String)(
+      implicit mc: MarkerContext): Future[JsValue] = {
+    val textparserFuture = textParserService.getNameAndLocation(text)
+	textparserFuture.map { textparserData =>
+        Json.toJson(textparserData)
+      }
+  }
+  
   def getUniqueNouns(text: String)(
       implicit mc: MarkerContext): Future[JsValue] = {
     val textparserFuture = textParserService.getNouns(text, true)
