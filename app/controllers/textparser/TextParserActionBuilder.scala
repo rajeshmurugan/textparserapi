@@ -11,7 +11,7 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * A wrapped request for post resources.
+  * A wrapped request for textparser service.
   *
   * This is commonly used to hold request-specific information like
   * security credentials, and useful shortcut methods.
@@ -46,7 +46,7 @@ trait RequestMarkerContext {
 }
 
 /**
-  * The action builder for the Post resource.
+  * The action builder for the TextParser Service.
   *
   * This is the place to put logging, metrics, to augment
   * the request with contextual data, and manipulate the
@@ -86,14 +86,14 @@ class TextParserActionBuilder @Inject()(messagesApi: MessagesApi,
 }
 
 /**
-  * Packages up the component dependencies for the post controller.
+  * Packages up the component dependencies for the textparser controller.
   *
   * This is a good way to minimize the surface area exposed to the controller, so the
   * controller only has to have one thing injected.
   */
 case class TextParserControllerComponents @Inject()(
     textActionBuilder: TextParserActionBuilder,
-    textResourceHandler: TextParserResourceHandler,
+    textServiceHandler: TextParserServiceHandler,
     actionBuilder: DefaultActionBuilder,
     parsers: PlayBodyParsers,
     messagesApi: MessagesApi,
@@ -103,7 +103,7 @@ case class TextParserControllerComponents @Inject()(
     extends ControllerComponents
 
 /**
-  * Exposes actions and handler to the PostController by wiring the injected state into the base class.
+  * Exposes actions and handler to the TextParserController by wiring the injected state into the base class.
   */
 class TextParserBaseController @Inject()(pcc: TextParserControllerComponents)
     extends BaseController
@@ -112,5 +112,5 @@ class TextParserBaseController @Inject()(pcc: TextParserControllerComponents)
 
   def TextParserAction: TextParserActionBuilder = pcc.textActionBuilder
 
-  def textResourceHandler: TextParserResourceHandler = pcc.textResourceHandler
+  def textServiceHandler: TextParserServiceHandler = pcc.textServiceHandler
 }

@@ -31,38 +31,38 @@ class TextParserController @Inject()(cc: TextParserControllerComponents)(
   }
 
   def getNouns(text: String): Action[AnyContent] = TextParserAction.async { implicit request =>
-    logger.trace("getNouns")
-    textResourceHandler.getNouns(text).map { result =>
+    logger.trace("Controller - GetNouns")
+    textServiceHandler.getNouns(text).map { result =>
       Ok(result)
     }
   }
 
   def getVerbs(text: String): Action[AnyContent] = TextParserAction.async {
     implicit request =>
-      logger.trace("getVerbs")
-      textResourceHandler.getVerbs(text).map { result =>
+      logger.trace("Controller - GetVerbs")
+      textServiceHandler.getVerbs(text).map { result =>
 		Ok(result)
       }
   }
   
   def getUniqueNouns(text: String): Action[AnyContent] = TextParserAction.async { implicit request =>
-    logger.trace("getUniqueNouns")
-    textResourceHandler.getUniqueNouns(text).map { result =>
+    logger.trace("Controller - GetUniqueNouns")
+    textServiceHandler.getUniqueNouns(text).map { result =>
       Ok(result)
     }
   }
 
   def getUniqueVerbs(text: String): Action[AnyContent] = TextParserAction.async {
     implicit request =>
-      logger.trace("getUniqueVerbs")
-      textResourceHandler.getUniqueVerbs(text).map { result =>
+      logger.trace("Controller - GetUniqueVerbs")
+      textServiceHandler.getUniqueVerbs(text).map { result =>
 		Ok(result)
       }
   }
   
   def analyze(text: String): Action[AnyContent] = TextParserAction.async { implicit request =>
-    logger.trace("analyze")
-    textResourceHandler.analyze(text).map { result =>
+    logger.trace("Controller - Analyze")
+    textServiceHandler.analyze(text).map { result =>
       Ok(result)
     }
   }  

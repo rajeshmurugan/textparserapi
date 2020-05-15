@@ -72,96 +72,95 @@ class TextParserExecutionContext @Inject()(actorSystem: ActorSystem)
     extends CustomExecutionContext(actorSystem, "repository.dispatcher")
 
 /**
-  * A pure non-blocking interface for the PostRepository.
+  * A pure non-blocking interface for the TextParserService.
   */
-trait TextParserRepository {
-  def getNouns(text: String)(implicit mc: MarkerContext): Future[NounsData]
-  def getVerbs(text: String)(implicit mc: MarkerContext): Future[VerbsData]
-  def getUniqueNouns(text: String)(implicit mc: MarkerContext): Future[NounsData]
-  def getUniqueVerbs(text: String)(implicit mc: MarkerContext): Future[VerbsData]
+trait TextParserService {
+  def getNouns(text: String, IsUnique: Boolean = false)(implicit mc: MarkerContext): Future[NounsData]
+  def getVerbs(text: String, IsUnique: Boolean = false)(implicit mc: MarkerContext): Future[VerbsData]
   def analyze(text: String)(implicit mc: MarkerContext): Future[OverAllData]
 }
 
 /**
-  * A trivial implementation for the Post Repository.
+  * A trivial implementation for TextParser Service.
   *
   * A custom execution context is used here to establish that blocking operations should be
   * executed in a different thread than Play's ExecutionContext, which is used for CPU bound tasks
   * such as rendering.
   */
 @Singleton
-class TextParserRepositoryImpl @Inject()()(implicit ec: TextParserExecutionContext)
-    extends TextParserRepository {
+class TextParserServiceImpl @Inject()()(implicit ec: TextParserExecutionContext)
+    extends TextParserService {
 
   private val logger = Logger(this.getClass)
   private var tokenizer : TokenizerME = _
   private var posTagger : POSTaggerME = _
   var STOPWORDS : Set[String] = _
-  private var isLoaded : Boolean = false
+  
   def initializeModel() = {
-	if (!isLoaded) {
-		val currentDirectory = new java.io.File(".").getCanonicalPath
-		// tokenize the sentence
-		val tokenModel = new TokenizerModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-token.bin"))
-		tokenizer = new TokenizerME(tokenModel)
-		// Parts-Of-Speech Tagging 
-		// loading the parts-of-speech model from stream 
-		val posModel = new POSModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-pos-maxent.bin")) 
-		// initializing the parts-of-speech tagger with model 
-		posTagger = new POSTaggerME(posModel)
-		STOPWORDS = scala.io.Source.fromFile(currentDirectory + "\\conf\\resource\\stopwords.txt").getLines.flatMap(_.split("\\W+")).toSet
-		isLoaded = true
-	}
+	logger.trace("initializing Model")
+	// Get Root path
+	val currentDirectory = new java.io.File(".").getCanonicalPath
+	// Tokenize the given text
+	val tokenModel = new TokenizerModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-token.bin"))
+	tokenizer = new TokenizerME(tokenModel)
+	// Parts-Of-Speech Tagging 
+	// loading the parts-of-speech model from stream 
+	val posModel = new POSModel(new FileInputStream(currentDirectory + "\\conf\\resource\\en-pos-maxent.bin")) 
+	// initializing the parts-of-speech tagger with model 
+	posTagger = new POSTaggerME(posModel)
+	STOPWORDS = scala.io.Source.fromFile(currentDirectory + "\\conf\\resource\\stopwords.txt").getLines.flatMap(_.split("\\W+")).toSet
+
   }
   initializeModel()
 
-  override def getNouns(text: String)(
+  override def getNouns(text: String, IsUnique: Boolean = false)(
       implicit mc: MarkerContext): Future[NounsData] = {
     Future {
-      logger.trace("getNouns")
-      NounsData(extractFeatures(text, true))
+	  if (!IsUnique)
+	  {
+		  logger.trace("Service - GetNouns")
+		  NounsData(extractFeatures(text, true))
+	  }
+	  else
+	  {
+		  logger.trace("Service - GetNouns With Unique")
+		  NounsData(extractFeatures(text, true).map(_.toLowerCase()).distinct)
+	  }
     }
   }
 
-  override def getVerbs(text: String)(
+  override def getVerbs(text: String, IsUnique: Boolean = false)(
       implicit mc: MarkerContext): Future[VerbsData] = {
     Future {
-      logger.trace("getVerbs")
-	  VerbsData(extractFeatures(text, false))
+	  if (!IsUnique)
+	  {
+		  logger.trace("Service - GetVerbs")
+		  VerbsData(extractFeatures(text, false))
+	  }
+	  else
+	  {
+		  logger.trace("Service - GetVerbs With Unique")
+		  VerbsData(extractFeatures(text, false).map(_.toLowerCase()).distinct)
+	  }
     }
   }
-  
-  override def getUniqueVerbs(text: String)(
-      implicit mc: MarkerContext): Future[VerbsData] = {
-    Future {
-      logger.trace("getUniqueVerbs")
-	  VerbsData(extractFeatures(text, false).map(_.toLowerCase()).distinct)
-    }
-  }
-  
-  override def getUniqueNouns(text: String)(
-      implicit mc: MarkerContext): Future[NounsData] = {
-    Future {
-      logger.trace("getUniqueNouns")
-      NounsData(extractFeatures(text, true).map(_.toLowerCase()).distinct)
-    }
-  }
-  
+ 
   override def analyze(text: String)(
       implicit mc: MarkerContext): Future[OverAllData] = {
     Future {
-      logger.trace("analyze")
-	  var (nouns:ListBuffer[String], verbs:ListBuffer[String], stopWords:Set[String], splCharacters:ListBuffer[String], tokenCount:Int) = extractFeatures(text)
+      logger.trace("Service - Analyze")
+	  var (nouns:ListBuffer[String], verbs:ListBuffer[String], stopWords:Set[String], splChars:ListBuffer[String], tokenCount:Int) = extractFeatures(text)
 	  val uniqueNouns = nouns.map(_.toLowerCase()).distinct
 	  val uniqueVerbs = verbs.map(_.toLowerCase()).distinct
-      OverAllData(TokenCountData(tokenCount,nouns.length,verbs.length,stopWords.size,splCharacters.length),
-	  ExtractAllData(nouns.toList,verbs.toList,stopWords), ExtractUniqueData(uniqueNouns.toList, uniqueVerbs.toList, stopWords, splCharacters.toList))
+      OverAllData(TokenCountData(tokenCount,nouns.length,verbs.length,stopWords.size,splChars.length),
+	  ExtractAllData(nouns.toList,verbs.toList,stopWords), ExtractUniqueData(uniqueNouns.toList, uniqueVerbs.toList, stopWords, splChars.distinct.toList))
     }
   }
 
-	def extractFeatures(text: String, IsNoun: Boolean): List[String] = {
+  def extractFeatures(text: String, IsNoun: Boolean): List[String] = {
+	  // Tokenize the given text
       val tokens = tokenizer.tokenize(text)
-	  // Tagger tagging the tokens 
+	  // POS tagging the tokens 
 	  val tags = posTagger.tag(tokens)
 	  
 	  var nouns = new ListBuffer[String]()
@@ -187,8 +186,9 @@ class TextParserRepositoryImpl @Inject()()(implicit ec: TextParserExecutionConte
 
 	}
 	def extractFeatures(text: String): (ListBuffer[String],ListBuffer[String],Set[String],ListBuffer[String],Int) = {
+      // Tokenize the given text
       val tokens = tokenizer.tokenize(text)
-	  // Tagger tagging the tokens 
+	  // POS tagging the tokens 
 	  val tags = posTagger.tag(tokens)
 	  var nouns = new ListBuffer[String]()
 	  var verbs  = new ListBuffer[String]()
@@ -212,13 +212,11 @@ class TextParserRepositoryImpl @Inject()()(implicit ec: TextParserExecutionConte
 	  (nouns,verbs,stopWords,specialCharacters,tokens.length)
 	}
 	
-	def convertPos(data:String): List[String] = {
+	def dumpPosTagger(data:String): List[String] = {
 	var result:List[String] = List("")
 	if(data.isEmpty)
 	"Data is empty"
 	try {
-		// converting option[x] to x 
-		// val sentence = data.get 
 		// tokenize the sentence
 		// val projectPath = play.Environment.rootPath().getAbsolutePath()
 		val tokens = tokenizer.tokenize(data) 
